@@ -1,0 +1,6 @@
+[1228/162926:ERROR:process_reader_win.cc(142)] SuspendThread: 액세스가 거부되었습니다. (0x5)
+[1228/162926:ERROR:exception_snapshot_win.cc(87)] thread ID 5304 not found in process
+[1228/162926:WARNING:crash_report_exception_handler.cc(61)] ProcessSnapshotWin::Initialize failed
+[1228/162926:ERROR:scoped_process_suspend.cc(38)] NtResumeProcess: 기존 프로세스에 액세스하려고 했습니다.  (0xc000010a)
+[0115/233625:ERROR:tcp_listen_socket.cc(76)] Could not bind socket to 127.0.0.1:6004
+[0115/233625:ERROR:node_debugger.cc(86)] Cannot start debugger server
