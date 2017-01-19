@@ -42,6 +42,25 @@ server.on('connection', client => {
         clientInfos[client.id].nickname = data.pname;
         clientInfos[client.id].cnum = data.pchar;
     })
+    client.on('player1pos', data => {
+        server.emit('player1pos',{
+            x:data.x,
+            y:data.y
+        })
+    })
+    client.on('player2pos', data => {
+        server.emit('player2pos',{
+            x:data.x,
+            y:data.y
+        })
+    })
+
+    client.on('wind',data=>{
+        server.emit('wind',{
+            num:data.num,
+            to:data.to
+        })
+    })
 
     client.on('wantjoin', data => {
         if (playerCount >= 2) {
