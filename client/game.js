@@ -43,6 +43,26 @@
             alert('게임이 시작되었습니다. 잠시만 기다려주세요');
         }
     })
+    socket.on('wind',data=>{
+        if(mycount!=data.num){
+            windto=data.to;
+            makewind=true;
+        }
+    })
+     socket.on('player1pos', data => {
+        p1x=data.x;
+        p1y=data.y;
+    });
+    socket.on('player2pos', data => {
+        p2x=data.x;
+        p2y=data.y;
+    });
+    var p1x=0;
+    var p1y=0;
+    var p2x=0;
+    var p2y=0;
+    var windto='d';
+    var makewind=false;
     var game = new Light.Game('game', 800, 600, '#E3F2FD', function (asset) {
         asset.loadImage('c1', 'resources/digda.png');
         asset.loadImage('c2', 'resources/hndlpoongson.png');
@@ -84,6 +104,10 @@
     var isLaserPointX = false;
     var laserPoint = 0;
     var isLaserCanShoot = false;
+
+    var windlist=[];
+    var laserlist=[];
+    var bulletlist=[];
 
     Unit = function (imgSrc, speed) {
         Light.EntityContainer.call(this);
@@ -208,11 +232,12 @@
     MyWind.prototype = Object.create(Unit.prototype);
     MyWind.prototype.constructor = MyWind;
 
-    EWind = function () {
+    EWind = function (to) {
         Unit.call(this, game.asset.getImage('ewind'), 25);
         this.body.friction.x = 0.95;
         this.sprite.scaleCenter.x = this.width / 2;
         this.hp = 300;
+        this.to = to;
     };
     EWind.prototype = Object.create(Unit.prototype);
     EWind.prototype.constructor = EWind;
@@ -308,11 +333,14 @@
     }
 
     gameState.onInit = function () {
+        this.bullets=[];
+        this.winds=[];
+        this.lasers=[];
         this.addChild(new Light.Sprite(game.asset.getImage('gameboard')));
         game.input.keyboard.keyCapturing = [Light.Keyboard.A, Light.Keyboard.D, Light.Keyboard.W,
             Light.Keyboard.CONTROL, Light.Keyboard.ALTERNATE, Light.Keyboard.ESCAPE,
             Light.Keyboard.RIGHT, Light.Keyboard.LEFT, Light.Keyboard.ENTER, Light.Keyboard.UP,
-            Light.Keyboard.DOWN, Light.Keyboard.S
+            Light.Keyboard.DOWN, Light.Keyboard.S, Light.Keyboard.SPACE
         ];
         this.spawnDelay = 2.0;
 
@@ -329,31 +357,142 @@
             this.player.y = 300;
             this.player2.x = 600;
             this.player2.y = 300;
-        } 
-        else {
+            p2x=600;
+            p2y=300;
+        } else {
             this.player.x = 600;
             this.player.y = 300;
             this.player2.x = 100;
             this.player2.y = 300;
+            p1x=600;
+            p1y=300;
         }
 
 
     }
 
     gameState.onUpdate = function (elapsed) {
-        if (game.input.keyboard.isPressed(Light.Keyboard.A) || game.input.keyboard.isPressed(Light.Keyboard.LEFT)) {
-            this.player.x -= this.player.speed * elapsed;
-        }
-        if (game.input.keyboard.isPressed(Light.Keyboard.D) || game.input.keyboard.isPressed(Light.Keyboard.RIGHT)) {
-            this.player.x += this.player.speed * elapsed;
-        }
-        if (game.input.keyboard.isPressed(Light.Keyboard.W) || game.input.keyboard.isPressed(Light.Keyboard.UP)) {
-            this.player.y -= this.player.speed * elapsed;
-        }
-        if (game.input.keyboard.isPressed(Light.Keyboard.S) || game.input.keyboard.isPressed(Light.Keyboard.DOWN)) {
-            this.player.y += this.player.speed * elapsed;
+        for(var i=0;i<this.winds.length;i++){
+            var wi = this.winds[i];
+            if(wi.to=='w'){
+                wi.y-=this.player.speed * elapsed*6;
+            }
+            if(wi.to=='s'){
+                wi.y+=this.player.speed * elapsed*6;
+            }
+            if(wi.to=='a'){
+                wi.x-=this.player.speed * elapsed*6;
+            }
+            if(wi.to=='d'){
+                wi.x+=this.player.speed * elapsed*6;
+            }
         }
 
+
+        if (game.input.keyboard.isPressed(Light.Keyboard.A) || game.input.keyboard.isPressed(Light.Keyboard.LEFT)) {
+            this.player.x -= this.player.speed * elapsed*2;
+        }
+        if (game.input.keyboard.isPressed(Light.Keyboard.D) || game.input.keyboard.isPressed(Light.Keyboard.RIGHT)) {
+            this.player.x += this.player.speed * elapsed*2;
+        }
+        if (game.input.keyboard.isPressed(Light.Keyboard.W) || game.input.keyboard.isPressed(Light.Keyboard.UP)) {
+            this.player.y -= this.player.speed * elapsed*2;
+        }
+        if (game.input.keyboard.isPressed(Light.Keyboard.S) || game.input.keyboard.isPressed(Light.Keyboard.DOWN)) {
+            this.player.y += this.player.speed * elapsed*2;
+        }
+        if (game.input.keyboard.isJustPressed(Light.Keyboard.SPACE)) {
+            var toto;
+            if (game.input.keyboard.isPressed(Light.Keyboard.A) || game.input.keyboard.isPressed(Light.Keyboard.LEFT)) {
+                socket.emit('wind', {
+                    num: mycount,
+                    to: 'a'
+                })
+                toto='a';
+            } else if (game.input.keyboard.isPressed(Light.Keyboard.D) || game.input.keyboard.isPressed(Light.Keyboard.RIGHT)) {
+                socket.emit('wind', {
+                    num: mycount,
+                    to: 'd'
+                })
+                toto='d';
+            } else if (game.input.keyboard.isPressed(Light.Keyboard.W) || game.input.keyboard.isPressed(Light.Keyboard.UP)) {
+                socket.emit('wind', {
+                    num: mycount,
+                    to: 'w'
+                })
+                toto='w';
+            } else if (game.input.keyboard.isPressed(Light.Keyboard.S) || game.input.keyboard.isPressed(Light.Keyboard.DOWN)) {
+                socket.emit('wind', {
+                    num: mycount,
+                    to: 's'
+                })
+                toto='s';
+            } else {
+                socket.emit('wind', {
+                    num: mycount,
+                    to: 'd'
+                })
+                toto='d';
+            }
+            var b = new EWind(toto);
+            if(toto=='w'){
+                b.x=this.player.x;
+                b.y=this.player.y-101;
+            }
+            if(toto=='a'){
+                b.x=this.player.x-51;
+                b.y=this.player.y;
+                b.scale.y=-1;
+            }
+            if(toto=='s'){
+                b.x=this.player.x;
+                b.y=this.player.y+151;
+            }
+            if(toto=='d'){
+                b.x=this.player.x+101;
+                b.y=this.player.y;
+            }
+            this.winds.push(b);
+            this.addChild(b);
+        }
+        if (mycount == 1) {
+            socket.emit('player1pos', {
+                x: this.player.x,
+                y: this.player.y
+            })
+            this.player2.x=p2x;
+            this.player2.y=p2y;
+        }
+        if (mycount == 2) {
+            socket.emit('player2pos', {
+                x: this.player.x,
+                y: this.player.y
+            })
+            this.player2.x=p1x;
+            this.player2.y=p1y;
+        }
+        if(makewind){
+            var b = new EWind(windto);
+            if(windto=='w'){
+                b.x=this.player2.x;
+                b.y=this.player2.y-101;
+            }
+            if(windto=='a'){
+                b.x=this.player2.x-101;
+                b.y=this.player2.y;
+            }
+            if(windto=='s'){
+                b.x=this.player2.x;
+                b.y=this.player2.y+51;
+            }
+            if(windto=='d'){
+                b.x=this.player2.x+51;
+                b.y=this.player2.y;
+            }
+            this.winds.push(b);
+            this.addChild(b);
+            makewind=false;
+        }
 
     }
 
