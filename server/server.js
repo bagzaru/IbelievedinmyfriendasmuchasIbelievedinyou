@@ -5,6 +5,12 @@ if (server) {
 
 let clientInfos = {};
 let playerCount = 0;
+let readyCount = 0;
+
+let p1name = '';
+let p1char = 1;
+let p2name = '';
+let p2char = 1;
 
 server.on('connection', client => {
     console.log(`[클라이언트 접속] ${client.id}`);
@@ -13,7 +19,8 @@ server.on('connection', client => {
     clientInfos[client.id] = {
         socket: client,
         nickname: defaultNickname,
-        num: playerCount
+        num: playerCount,
+        cnum: 1
     };
 
     client.emit('welcome', {
@@ -27,14 +34,38 @@ server.on('connection', client => {
         })
     })
 
-    client.on('userOutCheck',data=>{
-        clientInfos[client.id].num=data.nownum;
+    client.on('userOutCheck', data => {
+        clientInfos[client.id].num = data.nownum;
     })
 
-    client.on('playerCountRe', data => {
-        server.emit('playerCountRe', {
-            PlayerCount: playerCount
-        })
+    client.on('playerjoin', data => {
+        clientInfos[client.id].nickname = data.pname;
+        clientInfos[client.id].cnum = data.pchar;
+    })
+
+    client.on('wantjoin', data => {
+        if (playerCount >= 2) {
+            client.emit('gotojoin', {});
+            if (clientInfos[client.id].num == 1) {
+                p1char = data.cha;
+                p1name = data.name;
+            }
+            if (clientInfos[client.id].num == 2) {
+                p2char = data.cha;
+                p2name = data.name;
+            }
+            if (readyCount == 1) {
+
+                server.emit('gameStart', {
+                    p1n: p1name,
+                    p1c: p1char,
+                    p2n: p2name,
+                    p2c: p2char
+                })
+            }
+            readyCount++;
+        }
+
     })
 
     client.on('disconnect', () => {
@@ -43,7 +74,7 @@ server.on('connection', client => {
 
         server.emit('userOut', {
             outPlayerNum: clientInfos[client.id].num,
-            nowPlayerCount:playerCount
+            nowPlayerCount: playerCount
         })
         delete clientInfos[client.id];
     });

@@ -2,6 +2,11 @@
     let socket = io.connect('http://localhost:9999');
     var mycount = 0;
     var servercount = 0;
+    var isGaming = false;
+    var waitCount = 0;
+    var isReady = false;
+    var p2name = '';
+    var p2char = 1;
     socket.on('welcome', data => {
         mycount = data.playerNum;
         servercount = data.playerNum;
@@ -14,11 +19,30 @@
         if (data.outPlayerNum < mycount) {
             mycount--;
         }
-        servercount=data.nowPlayerCount;
+        servercount = data.nowPlayerCount;
         socket.emit('userOutCheck', {
-            nownum:mycount
+            nownum: mycount
         })
     });
+    socket.on('gotojoin', data => {
+        isReady = true;
+    });
+    socket.on('gameStart', data => {
+        if (isReady) {
+            if (mycount == 1) {
+                p2char = data.p2c;
+                p2name = data.p2n;
+            }
+            if (mycount == 2) {
+                p2char = data.p1c;
+                p2name = data.p1n;
+            }
+            isGaming = true;
+
+        } else {
+            alert('게임이 시작되었습니다. 잠시만 기다려주세요');
+        }
+    })
     var game = new Light.Game('game', 800, 600, '#E3F2FD', function (asset) {
         asset.loadImage('c1', 'resources/digda.png');
         asset.loadImage('c2', 'resources/hndlpoongson.png');
@@ -46,7 +70,6 @@
 
     var myname = '';
     var mycharacter = 0;
-    var player2character = 1; //서버에서 받아온 캐릭터
     var cursor;
     var titleText;
     var loadingText;
@@ -106,7 +129,7 @@
 
     Player2 = function () {
         var pname = '';
-        switch (player2character) {
+        switch (p2char) {
             case 1:
                 pname = 'c1';
                 break;
@@ -236,8 +259,12 @@
                 this.removeChild(titleText);
             } else {
                 mycharacter = (cursor.x - 21) / 154 + 1;
-                alert(mycharacter);
+                socket.emit('playerjoin', {
+                    pname: myname,
+                    pchar: mycharacter
+                })
                 game.states.change('loading');
+
             }
         }
 
@@ -264,9 +291,20 @@
     loadState.onUpdate = function (elapsed) {
         //나중에 서버 추가할 때 수정하기
         loadText.text = '대기열 ' + (mycount - 2) + '번';
-        // if(mycount<3){
-        //     game.states.change('game');
-        // }
+        if (isGaming) {
+            game.states.change('game');
+        }
+        if (mycount < 3 && waitCount == 30 && !isReady) {
+            socket.emit('wantjoin', {
+                name: myname,
+                cha: mycharacter
+            });
+            waitCount = 0;
+        }
+        if (waitCount == 30) {
+            waitCount = 0;
+        }
+        waitCount++;
     }
 
     gameState.onInit = function () {
@@ -282,13 +320,22 @@
         this.addChild(this.unitLayer);
 
         this.player = new Player();
-        this.player.x = 400;
-        this.player.y = 300;
         this.unitLayer.addChild(this.player);
         this.player2 = new Player2();
-        this.player2.x = 400;
-        this.player2.y = 300;
         this.unitLayer.addChild(this.player2);
+
+        if (mycount == 1) {
+            this.player.x = 100;
+            this.player.y = 300;
+            this.player2.x = 600;
+            this.player2.y = 300;
+        } 
+        else {
+            this.player.x = 600;
+            this.player.y = 300;
+            this.player2.x = 100;
+            this.player2.y = 300;
+        }
 
 
     }
