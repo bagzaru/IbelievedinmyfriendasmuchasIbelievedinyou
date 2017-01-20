@@ -7,6 +7,15 @@
     var isReady = false;
     var p2name = '';
     var p2char = 1;
+    var isFinished = false;
+    var isWin = false;
+
+    var cnt = 0;
+    var canShoot = false;
+    var bulletAngles = [];
+    var bulletFroms = [];
+    var bulletPos = [];
+
     socket.on('welcome', data => {
         mycount = data.playerNum;
         servercount = data.playerNum;
@@ -16,6 +25,14 @@
         servercount = data.PlayerCount;
     });
     socket.on('userOut', data => {
+        if (isGaming) {
+            if (mycount == 2 || mycount == 1) {
+                if (data.outPlayerNum == 1 || data.outPlayerNum == 2) {
+                    isWin = true;
+                    isFinished = true;
+                }
+            }
+        }
         if (data.outPlayerNum < mycount) {
             mycount--;
         }
@@ -23,6 +40,7 @@
         socket.emit('userOutCheck', {
             nownum: mycount
         })
+
     });
     socket.on('gotojoin', data => {
         isReady = true;
@@ -39,48 +57,68 @@
             }
             isGaming = true;
 
+            playAlert = setInterval(function () {
+                canShoot = true;
+            }, 1000);
+
+            bulletAngles = data.bulletangles;
+            bulletFroms = data.bulletfroms;
+            bulletPos = data.bulletpos;
+
         } else {
             alert('게임이 시작되었습니다. 잠시만 기다려주세요');
         }
     })
-    socket.on('wind',data=>{
-        if(mycount!=data.num){
-            windto=data.to;
-            makewind=true;
+    socket.on('wind', data => {
+        if (mycount != data.num) {
+            windto = data.to;
+            makewind = true;
         }
     })
-     socket.on('player1pos', data => {
-        p1x=data.x;
-        p1y=data.y;
+    socket.on('player1pos', data => {
+        p1x = data.x;
+        p1y = data.y;
     });
     socket.on('player2pos', data => {
-        p2x=data.x;
-        p2y=data.y;
+        p2x = data.x;
+        p2y = data.y;
     });
-    var p1x=0;
-    var p1y=0;
-    var p2x=0;
-    var p2y=0;
-    var windto='d';
-    var makewind=false;
+
+    socket.on('gameover', data => {
+        if (isGaming)
+            isFinished = true;
+        if (data.num == mycount) {
+
+        } else if (isGaming) {
+            isWin = true;
+        }
+    })
+    var p1x = 0;
+    var p1y = 0;
+    var p2x = 0;
+    var p2y = 0;
+    var windto = 'd';
+    var makewind = false;
     var game = new Light.Game('game', 800, 600, '#E3F2FD', function (asset) {
-        asset.loadImage('c1', 'resources/digda.png');
-        asset.loadImage('c2', 'resources/hndlpoongson.png');
-        asset.loadImage('c3', 'resources/JunSeokTheUnityMaster.png');
-        asset.loadImage('c4', 'resources/metamong.png');
-        asset.loadImage('c5', 'resources/slime.png');
+        asset.loadImage('c1', 'resources/digda2.png');
+        asset.loadImage('c2', 'resources/hndlpoongson2.png');
+        asset.loadImage('c3', 'resources/JunSeokTheUnityMaster2.png');
+        asset.loadImage('c4', 'resources/metamong2.png');
+        asset.loadImage('c5', 'resources/slime2.png');
         asset.loadImage('laserH', 'resources/laser.png');
         asset.loadImage('laserV', 'resources/laser2.png');
         asset.loadImage('warningH', 'resources/warning.png');
         asset.loadImage('warningV', 'resources/warning2.png');
         asset.loadImage('exlaserH', 'resources/warningl.png');
         asset.loadImage('exlaserV', 'resources/warningl2.png');
-        asset.loadImage('mywind', 'resources/wind.png');
-        asset.loadImage('ewind', 'resources/Ewind.png');
+        asset.loadImage('mywind', 'resources/wind2.png');
+        asset.loadImage('ewind', 'resources/Ewind2.png');
         asset.loadImage('cursor', 'resources/cursor.png');
-        asset.loadImage('ball', 'resources/ballBB.png');
-        asset.loadImage('intro', 'resources/intro.png');
-        asset.loadImage('gameboard', 'resources/gameboard.png');
+        asset.loadImage('ball', 'resources/ballCC.png');
+        asset.loadImage('intro', 'resources/intro2.png');
+        asset.loadImage('gameboard', 'resources/gameboard2.png');
+        asset.loadImage('winwin', 'resources/winner.png');
+        asset.loadImage('loserloser', 'resources/loser.png');
     });
 
     var introState = new Light.State(game);
@@ -105,9 +143,9 @@
     var laserPoint = 0;
     var isLaserCanShoot = false;
 
-    var windlist=[];
-    var laserlist=[];
-    var bulletlist=[];
+    var windlist = [];
+    var laserlist = [];
+    var bulletlist = [];
 
     Unit = function (imgSrc, speed) {
         Light.EntityContainer.call(this);
@@ -233,11 +271,21 @@
     MyWind.prototype.constructor = MyWind;
 
     EWind = function (to) {
-        Unit.call(this, game.asset.getImage('ewind'), 25);
+        if (to == 'w' || to == 's')
+            Unit.call(this, game.asset.getImage('ewind'), 25);
+        else
+            Unit.call(this, game.asset.getImage('mywind'), 25);
         this.body.friction.x = 0.95;
         this.sprite.scaleCenter.x = this.width / 2;
         this.hp = 300;
         this.to = to;
+        if (to == 's') {
+            this.scale.y = -1;
+        } else if (to == 'd') {
+            this.scale.x = -1;
+        } else {
+
+        }
     };
     EWind.prototype = Object.create(Unit.prototype);
     EWind.prototype.constructor = EWind;
@@ -269,7 +317,7 @@
         if (!isCanStart && game.input.keyboard.isJustPressed(Light.Keyboard.ENTER)) {
             isCanStart = true;
             titleText = new Light.TextField();
-            titleText.font = "25px 궁서";
+            titleText.font = "25px 맑은 고딕";
             titleText.fillStyle = "#ff0000";
             titleText.position.set(120, 100);
             if (myname == '')
@@ -300,22 +348,32 @@
     }
 
     loadState.onInit = function () {
-        //나중에 서버 추가할 때 수정하기
-        //socket.emit('playerCountRe', {});
-        //socket.on('playerCountRe',data=>{
-        //    mycount=data.PlayerCount;
-        //})
+        this.addChild(new Light.Sprite(game.asset.getImage('gameboard')));
         loadText = new Light.TextField();
-        loadText.font = "25px 궁서";
+        loadText.font = "25px 맑은 고딕";
         loadText.fillStyle = "#ff0000";
         loadText.position.set(120, 100);
         loadText.text = '대기열 ' + (mycount - 2) + '번째';
+
         this.addChild(loadText);
     }
-
+    var acac = 0;
     loadState.onUpdate = function (elapsed) {
         //나중에 서버 추가할 때 수정하기
         loadText.text = '대기열 ' + (mycount - 2) + '번';
+        if (mycount <= 2) {
+            if (acac == 0) {
+                loadText.text = '상대를 찾고 있습니다.';
+            }
+            if (acac == 1) {
+                loadText.text = '상대를 찾고 있습니다..';
+            }
+            if (acac == 2) {
+                loadText.text = '상대를 찾고 있습니다..';
+                acac = -1;
+            }
+            acac++;
+        }
         if (isGaming) {
             game.states.change('game');
         }
@@ -333,9 +391,8 @@
     }
 
     gameState.onInit = function () {
-        this.bullets=[];
-        this.winds=[];
-        this.lasers=[];
+
+        this.gameArea = new Light.Rectangle(0, 0, 800, 600);
         this.addChild(new Light.Sprite(game.asset.getImage('gameboard')));
         game.input.keyboard.keyCapturing = [Light.Keyboard.A, Light.Keyboard.D, Light.Keyboard.W,
             Light.Keyboard.CONTROL, Light.Keyboard.ALTERNATE, Light.Keyboard.ESCAPE,
@@ -357,49 +414,112 @@
             this.player.y = 300;
             this.player2.x = 600;
             this.player2.y = 300;
-            p2x=600;
-            p2y=300;
+            p2x = 600;
+            p2y = 300;
         } else {
             this.player.x = 600;
             this.player.y = 300;
             this.player2.x = 100;
             this.player2.y = 300;
-            p1x=600;
-            p1y=300;
+            p1x = 600;
+            p1y = 300;
         }
 
+        this.bullets = [];
+        this.winds = [];
+        this.lasers = [];
 
     }
 
+    var shootcount = 1;
+
     gameState.onUpdate = function (elapsed) {
-        for(var i=0;i<this.winds.length;i++){
+        if (canShoot) {
+            for (var i = 0; i < shootcount; i++) {
+                var b = new Light.Sprite(game.asset.getImage('ball'));
+                if (bulletFroms[cnt] == 0.25) {
+                    b.x = bulletPos[cnt];
+                    b.y = 1;
+                } else if (bulletFroms[cnt] == 0.75) {
+                    b.x = bulletPos[cnt];
+                    b.y = 550;
+                } else if (bulletFroms[cnt] == 0.5) {
+                    b.x = 750;
+                    b.y = bulletPos[cnt];
+                } else {
+                    b.x = 1;
+                    b.y = bulletPos[cnt];
+                }
+                b.rotation = bulletAngles[cnt] * Math.PI * 2;
+                b.speed = 2.5;
+                if (cnt > 150)
+                    b.speed = 4.0;
+                if (cnt > 540)
+                    b.speed = 7.0;
+                this.bullets.push(b);
+                this.addChild(b);
+                cnt++;
+                if (cnt % 15 == 0)
+                    shootcount++;
+                //console.log('asdf처리중'+b.x+' '+b.y+' '+b.rotation);
+            }
+            canShoot = false;
+        }
+
+        for (var i = 0; i < this.bullets.length; i++) {
+            var bullet = this.bullets[i];
+            bullet.x += Math.cos(bullet.rotation) * bullet.speed;
+            bullet.y += Math.sin(bullet.rotation) * bullet.speed;
+
+            var isDead = false;
+            if (this.player.contains(bullet.position)) {
+                isDead = true;
+                this.player.hp = 0;
+            }
+            if (this.player2.contains(bullet.position)) {
+                isDead = true;
+                //this.player.hp=0;
+            }
+
+            if (!bullet.getBounds().intersects(this.gameArea)) isDead = true;
+            if (isDead) {
+                this.bullets.splice(this.bullets.indexOf(bullet), 1);
+                this.removeChild(bullet);
+                bullet = null;
+            }
+        }
+
+        if (this.player.x < -50 || this.player.y < -50 || this.player.x > 750 || this.player.y > 750) {
+            this.player.hp = 0;
+        }
+        for (var i = 0; i < this.winds.length; i++) {
             var wi = this.winds[i];
-            if(wi.to=='w'){
-                wi.y-=this.player.speed * elapsed*6;
+            if (wi.to == 'w') {
+                wi.y -= this.player.speed * elapsed * 6;
             }
-            if(wi.to=='s'){
-                wi.y+=this.player.speed * elapsed*6;
+            if (wi.to == 's') {
+                wi.y += this.player.speed * elapsed * 6;
             }
-            if(wi.to=='a'){
-                wi.x-=this.player.speed * elapsed*6;
+            if (wi.to == 'a') {
+                wi.x -= this.player.speed * elapsed * 6;
             }
-            if(wi.to=='d'){
-                wi.x+=this.player.speed * elapsed*6;
+            if (wi.to == 'd') {
+                wi.x += this.player.speed * elapsed * 6;
             }
         }
 
 
         if (game.input.keyboard.isPressed(Light.Keyboard.A) || game.input.keyboard.isPressed(Light.Keyboard.LEFT)) {
-            this.player.x -= this.player.speed * elapsed*2;
+            this.player.x -= this.player.speed * elapsed * 2;
         }
         if (game.input.keyboard.isPressed(Light.Keyboard.D) || game.input.keyboard.isPressed(Light.Keyboard.RIGHT)) {
-            this.player.x += this.player.speed * elapsed*2;
+            this.player.x += this.player.speed * elapsed * 2;
         }
         if (game.input.keyboard.isPressed(Light.Keyboard.W) || game.input.keyboard.isPressed(Light.Keyboard.UP)) {
-            this.player.y -= this.player.speed * elapsed*2;
+            this.player.y -= this.player.speed * elapsed * 2;
         }
         if (game.input.keyboard.isPressed(Light.Keyboard.S) || game.input.keyboard.isPressed(Light.Keyboard.DOWN)) {
-            this.player.y += this.player.speed * elapsed*2;
+            this.player.y += this.player.speed * elapsed * 2;
         }
         if (game.input.keyboard.isJustPressed(Light.Keyboard.SPACE)) {
             var toto;
@@ -408,49 +528,49 @@
                     num: mycount,
                     to: 'a'
                 })
-                toto='a';
+                toto = 'a';
             } else if (game.input.keyboard.isPressed(Light.Keyboard.D) || game.input.keyboard.isPressed(Light.Keyboard.RIGHT)) {
                 socket.emit('wind', {
                     num: mycount,
                     to: 'd'
                 })
-                toto='d';
+                toto = 'd';
             } else if (game.input.keyboard.isPressed(Light.Keyboard.W) || game.input.keyboard.isPressed(Light.Keyboard.UP)) {
                 socket.emit('wind', {
                     num: mycount,
                     to: 'w'
                 })
-                toto='w';
+                toto = 'w';
             } else if (game.input.keyboard.isPressed(Light.Keyboard.S) || game.input.keyboard.isPressed(Light.Keyboard.DOWN)) {
                 socket.emit('wind', {
                     num: mycount,
                     to: 's'
                 })
-                toto='s';
+                toto = 's';
             } else {
                 socket.emit('wind', {
                     num: mycount,
                     to: 'd'
                 })
-                toto='d';
+                toto = 'd';
             }
             var b = new EWind(toto);
-            if(toto=='w'){
-                b.x=this.player.x;
-                b.y=this.player.y-101;
+            if (toto == 'w') {
+                b.x = this.player.x - 25;
+                b.y = this.player.y - 51;
             }
-            if(toto=='a'){
-                b.x=this.player.x-51;
-                b.y=this.player.y;
-                b.scale.y=-1;
+            if (toto == 'a') {
+                b.x = this.player.x - 51;
+                b.y = this.player.y - 25;
+                b.scale.y = -1;
             }
-            if(toto=='s'){
-                b.x=this.player.x;
-                b.y=this.player.y+151;
+            if (toto == 's') {
+                b.x = this.player.x - 25;
+                b.y = this.player.y + 51;
             }
-            if(toto=='d'){
-                b.x=this.player.x+101;
-                b.y=this.player.y;
+            if (toto == 'd') {
+                b.x = this.player.x + 51;
+                b.y = this.player.y - 25;
             }
             this.winds.push(b);
             this.addChild(b);
@@ -460,39 +580,69 @@
                 x: this.player.x,
                 y: this.player.y
             })
-            this.player2.x=p2x;
-            this.player2.y=p2y;
+            this.player2.x = p2x;
+            this.player2.y = p2y;
         }
         if (mycount == 2) {
             socket.emit('player2pos', {
                 x: this.player.x,
                 y: this.player.y
             })
-            this.player2.x=p1x;
-            this.player2.y=p1y;
+            this.player2.x = p1x;
+            this.player2.y = p1y;
         }
-        if(makewind){
+        if (makewind) {
             var b = new EWind(windto);
-            if(windto=='w'){
-                b.x=this.player2.x;
-                b.y=this.player2.y-101;
+            if (windto == 'w') {
+                b.x = this.player2.x;
+                b.y = this.player2.y - 101;
             }
-            if(windto=='a'){
-                b.x=this.player2.x-101;
-                b.y=this.player2.y;
+            if (windto == 'a') {
+                b.x = this.player2.x - 101;
+                b.y = this.player2.y;
             }
-            if(windto=='s'){
-                b.x=this.player2.x;
-                b.y=this.player2.y+51;
+            if (windto == 's') {
+                b.x = this.player2.x;
+                b.y = this.player2.y + 51;
             }
-            if(windto=='d'){
-                b.x=this.player2.x+51;
-                b.y=this.player2.y;
+            if (windto == 'd') {
+                b.x = this.player2.x + 51;
+                b.y = this.player2.y;
             }
             this.winds.push(b);
             this.addChild(b);
-            makewind=false;
+            makewind = false;
+
+
         }
+        //플레이어 사망처리
+        if (this.player.hp <= 0) {
+            socket.emit('gameover', {
+                num: mycount
+            })
+        }
+        if (cnt > 1300) {
+            isWin = true;
+            socekt.emit('gameover', {
+                num: 2
+            })
+        }
+        if (isFinished) {
+            socket.emit('gameout', {
+
+            })
+            game.states.change('end');
+        }
+    }
+
+    endState.onInit = function () {
+        if (isWin)
+            this.addChild(new Light.Sprite(game.asset.getImage('winwin')));
+        else
+            this.addChild(new Light.Sprite(game.asset.getImage('loserloser')));
+    }
+
+    endState.onUpdate = function (elapsed) {
 
     }
 
